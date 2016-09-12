@@ -2139,6 +2139,7 @@ function () {
   };
   g.startGameplay = function () {
     g.score = [0, 0];
+    google.pacman.score = g.score;
     g.extraLifeAwarded = [e, e];
     g.lives = 3;
     g.level = 0;
@@ -3177,11 +3178,67 @@ function () {
       google.pacman = undefined
     }
   };
+  function getScore() {
+    if (typeof g.score === 'undefined') {
+      return 0;
+    }
+    if (google.pacman.running) {
+      return -1;
+    }
+    return g.score[0];
+  }
+
+  function move(direction) {
+    var event = document.createEvent("Events");
+    event.initEvent("keydown", true, true);
+    event.keyCode = direction;
+    event.which = direction;
+    document.dispatchEvent(event);
+
+    var eventUp = document.createEvent("Events");
+    eventUp.initEvent("keyup", true, true);
+    eventUp.keyCode = direction;
+    eventUp.which = direction;
+    document.dispatchEvent(eventUp);
+  }
+
+  var moveDict = {
+    "left": function() {move(37); console.log("left")},
+    "up": function() {move(38); console.log("up")},
+    "right": function() {move(39); console.log("right")},
+    "down": function() {move(40); console.log("down")},
+    "noop": function() {console.log("noop")}
+  };
+
+  function hitButtons(keySequence, time, resolve) {
+    google.pacman.running = true;
+    var key = keySequence.pop();
+    moveDict[key]();
+    setTimeout(function() {
+      if(keySequence.length > 0) {
+        hitButtons(keySequence, time, resolve);
+      } else {
+        resolve('done')
+      }
+    }, time);
+  }
+
+  function buttons(sequence, time) {
+      var promise = new Promise(function(resolve, reject) {
+        hitButtons(sequence.reverse(), time, resolve)
+      });
+    promise.then(function(done) {google.pacman.running = false});
+  }
+
   g.exportFunctionCalls = function () {
     google.pacman = {};
     google.pacman.insertCoin = g.insertCoin;
     google.pacman.flashLoaded = g.flashLoaded;
-    google.pacman.destroy = g.destroy
+    google.pacman.destroy = g.destroy;
+    google.pacman.getScore = getScore;
+    google.pacman.newGame = g.newGame;
+    google.pacman.running = false;
+    google.pacman.buttons = buttons;
   };
   g.updateLoadingProgress = function (b) {
     b = Math.round(b * 200);
